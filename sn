@@ -1,0 +1,92 @@
+#!/bin/bash
+
+function create {
+	if [ -d "$1" ]; then
+  		echo 'Social network already exists.'
+		exit -1
+	fi
+        git init -q $1
+}
+
+function join {
+	git clone $1
+}
+
+function pull {
+	echo "Git pull"
+}
+
+function log {
+	echo "Git log"
+}
+
+function show {
+	echo "Git show"
+}
+
+function post {
+	echo "Git commit"
+}
+
+function like {
+	echo "Git tag"
+}
+
+function push {
+	echo "Git push"
+}
+
+function members {
+	echo "Git log --|"
+}
+
+function follow {
+	echo "Git /....|"
+}
+
+function unfollow {
+	echo "Git ...."
+}
+
+# Make sure the git command is installed in the system.
+if ! [ -x "$(command -v git)" ]; then echo 'Please install the git command first.'; exit -1 ; fi
+
+case $1 in
+	create)
+	create $2
+	;;
+	join)
+	join $2	
+	;;
+	pull)
+	pull
+	;;
+	log)
+	log
+	;;
+	show)
+	show
+	;;
+	post)
+	post
+	;;
+	like)
+	like
+	;;
+	push)
+	push
+	;;
+	members)
+	members
+	;;
+	follow)
+	follow
+	;;
+	unfollow)
+	unfollow
+	;;
+	*)
+	echo "sn manual"
+	;;
+esac
+
