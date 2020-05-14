@@ -1,39 +1,49 @@
 #!/bin/bash
 
 function create {
-	if [ -d "$1" ]; then
-  		echo 'Social network already exists.'
-		exit -1
-	fi
-        git init -q $1
+	if [ -z "$1" ] ; then echo "You need to specify a valid social network to create (e.g. sn create cooking)."; exit -1 ; fi
+        git init --bare "$1"
+	#git branch "$1"
 }
 
 function join {
-	git clone $1
+	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join cooking)."; exit -1; fi
+	if ! [ -d "$1" ] ; then echo "The specified social network does not exist. Use 'sn create $1' first."; exit -1; fi
+	if ! [ -d "$1-repo" ] ; then
+		git clone -q "$1" "$1-repo";
+	fi
+	echo "$1-repo" > .active-network 
+	#if ! git checkout "$1"; then echo "Network does not exist. Use 'sn create $1' first."; fi 
 }
 
 function pull {
-	echo "Git pull"
+	 cd $(cat .active-network)
+	git pull	
 }
 
 function log {
-	echo "Git log"
+	cd $(cat .active-network)
+	git log --oneline
 }
 
 function show {
+	 cd $(cat .active-network)
 	echo "Git show"
 }
 
 function post {
+	 cd $(cat .active-network)
 	echo "Git commit"
 }
 
 function like {
+	 cd $(cat .active-network)
 	echo "Git tag"
 }
 
 function push {
-	echo "Git push"
+	 cd $(cat .active-network)
+	git push 
 }
 
 function members {
@@ -41,22 +51,55 @@ function members {
 }
 
 function follow {
-	echo "Git /....|"
+	echo "Git "
 }
 
 function unfollow {
 	echo "Git ...."
 }
 
+function setup {
+	read -p "Enter your name: " name
+	echo
+	
+	read -p "Enter your email: " email
+    	echo
+    	if ! [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]
+    	then
+        	echo "Email address $email is invalid. Exiting" >&2
+        	exit -1
+    	fi
+	#read -p "Please enter the git remote URI: " remote
+
+	# init our local repository
+	#if ! git init ; then exit -1; fi
+	# add remote
+	#if ! git remote add origin "$remote" ; then exit -1; fi
+	# pull all changes
+	#if ! git pull origin master; then git remote remove origin ;exit -1; fi
+
+	# Set the push to simple 
+	
+	if ! git config --global push.default simple; then exit -1; fi
+	if ! git config --global user.name "$name" ; then exit -1; fi
+    	if ! git config --global user.email "$email" ; then exit -1; fi
+	echo "$name" > .setup
+	echo "$email" >> .setup
+	
+}
+
 # Make sure the git command is installed in the system.
 if ! [ -x "$(command -v git)" ]; then echo 'Please install the git command first.'; exit -1 ; fi
+# Verify that a remote repository has been set. If not, setup and continue.
+#if ! git remote get-url origin &> /dev/null; then setup;  fi
+if ! [ -f .setup ] ; then setup ; fi
 
 case $1 in
 	create)
-	create $2
+	create "$2"
 	;;
 	join)
-	join $2	
+	join "$2"	
 	;;
 	pull)
 	pull
