@@ -9,6 +9,48 @@ function pretty_print {
         echo "-----------------------------------------------"
 }
 
+#Email address validator
+function validate_email {
+	if ! [[ "$1" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]
+        then
+                echo "Email address $1 is invalid."
+                return 1
+        fi
+	return 0;
+}
+
+# Check if a member email exists
+function member_exists {
+	for i in $(git log --pretty=format:"%ae" | uniq); do
+		if [[ "$i" = "$1" ]]; then return 0; fi
+	done
+	return 1;
+}
+
+# Check if we are already following a member
+function already_following {
+	for i in $(jq -r '.follow[]' "$my_set_file"); do
+		if [[ "$i" = "$1" ]]; then return 0; fi
+	done
+	return 1
+}
+
+#check if post exists
+function post_exists {
+	for i in $(git log --oneline | cut -d ' ' -f 1); do
+		if [[ "$i" = "$1" ]]; then return 0; fi
+	done	
+	return 1
+}
+
+#Check if we are already liking this post
+function check_post_like {
+	for i in $(jq -r '.likes[]' "$my_set_file"); do
+                if [[ "$i" = "$1" ]]; then return 0; fi
+        done
+        return 1
+}
+
 #Verify that the requested network has been created or joined and switch to it
 function switch_to_network {
 	if ! [ -f .active_network ] ; then echo "No social network has been joined. Use 'sn join <social network>'"; return 1; fi
@@ -29,14 +71,14 @@ function create {
 function join {
 	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join https://www.github/something/cooking.git/ )."; exit -1; fi
 	# strip url and trailing .git if any
-	active_network=$(basename -s .git "$1")
+	active_network=${1%.*}
 	if ! [ -d "$active_network" ] ; then echo "Cloning network..."; git clone -q "$1"; fi
 	echo "$active_network" > .active_network
 	# If our config file is missing from the repo, then add it, commit and push.
 	# Our config file is a json file with our email
 	switch_to_network
 	if ! [ -f "$my_set_file" ]; then
-		echo '{ "posts":0, "followers":[] }' > "$my_set_file";
+		echo '{ "posts":0, "followers":[], "likes":[] }' > "$my_set_file";
 	fi
 	# Add - commit - push our settings file
 	pretty_print "Adding any changes to your local settings file back to the network..."
@@ -47,72 +89,132 @@ function join {
 	git push -q origin master
 }
 
+# Pull all posts for this network
 function pull {
 	if ! switch_to_network ; then exit -1; fi
 	pretty_print "Getting latest posts..."
 	git pull	
 }
 
+# Show all posts
 function log {
 	if ! switch_to_network ; then exit -1; fi
 	pretty_print "Posts on this social network"
 	git log --oneline
 }
 
+# Show a specific post
 function show {
 	if ! switch_to_network ; then exit -1; fi
-	if [ -z "$1" ]; then exit -1; fi
+	if [ -z "$1" ]; then echo "Specify post to show (e.g. ./sn show 3edf55)"; exit -1; fi
 	pretty_print "Displaying post $1"
 	git show -s --format="On: %cD %nUser: %an %nPosted: %s" "$1"
 }
 
+# Create a new post
 function post {
 	if ! switch_to_network ; then exit -1; fi
 	read -p "Type your post here. When finished, just press the 'Enter' key:  " post_body
-	# increase commit number
+	# Get post number and increase by one
 	current_posts=$(jq '.posts' "$my_set_file" )
 	current_posts=$((current_posts+1))
-	contents="$(jq '.posts = '"$current_posts" "$my_set_file")" && echo "${contents}" > "$my_set_file"
+	# store back to my json file
+	contents="$(jq '.posts = '"$current_posts" "$my_set_file")" 
+	echo "${contents}" > "$my_set_file"
 	pretty_print "Adding your post..."		
+	# Add json to the commit
 	git add "$my_set_file"
 	pretty_print "Commiting your post. Do not forget to push your post to the rest of the network with './sn push'"
+	# perform the actual commit
 	git commit -q -m "$post_body"	
 }
 
+# Like a specific post by id
 function like {
 	if ! switch_to_network; then exit -1; fi
-	echo "Git tag"
+	if [ -z "$1" ]; then echo "You need to specify the post you like (e.g. ./sn like 3eff85b)";  exit -1; fi
+        #if ! git show -s --format="On: %cD %nUser: %an %nPosted: %s" "$1" &>/dev/null; then echo "Post not found"; exit -1; fi
+	if ! post_exists "$1"; then echo "The requested post does not exist!"; exit -2; fi
+	if check_post_like "$1"; then echo "You already liked this post!"; exit -3; fi
+	likes=$(jq '.likes += ["'"$1"'"]' "$my_set_file" )
+	echo "${likes}" > "$my_set_file"
+	echo "You liked post $1"	
 }
 
+# Push your changes to the network
 function push {
+	# get the current active network name for notificaiton email subject
+	active_network=$(cat .active_network)
 	if ! switch_to_network; then exit -1; fi
+	# First notify our followers about our posts
+	# by parsing all members json files and checking if
+	# the member follows us
+	for i in *.json; do
+        	for j in $(jq -r '.follow[]' "$i"); do
+                        if [ "$j" = "$my_email" ]; then
+				subject="$my_name made new post(s) in $active_network!"
+				body=$(git log origin/master..master --pretty=format:"%h - %an, %ar : %s")
+				from="$my_email"
+				to=${i%.*}
+                                echo -e "Subject:${subject}\n\n${body}" | sendmail -f "${from}" -t "${to}"
+                        fi
+                done
+        done
+
 	pretty_print "Pusing your posts to the network..."
+	# stash our own changes
+	git stash
+	# Make a pull to get latest posts
+	git pull
+	# Merge with local posts
+	git stash apply
+	# This should be down after post
 	git push -q origin master
 }
 
+# List all network members
 function members {
 	if ! switch_to_network; then exit -1; fi
         pretty_print "Displaying network members and emails..."
 	git log --pretty=format:"User: %an   Email: %ae" | uniq	
 }
 
+# Follow a member by specifying his/hers email address
 function follow {
-	echo "Git "
+	if ! switch_to_network; then exit -1; fi	
+	if [ -z "$1" ] ; then echo "You need to specify the email address of the member to follow (e.g. ./sn follow member@mail.com)";exit -1; fi
+	if ! validate_email "$1"; then exit -2; fi 
+	if ! member_exists "$1"; then echo "The requested member does not exist in the network!";exit -3;fi
+	if already_following "$1"; then echo "You are already following this member!";exit -4;fi
+	following=$(jq '.follow += ["'"$1"'"]' "$my_set_file" )
+	echo "${following}" > "$my_set_file"
+	pretty_print "You are now following $1"	
 }
 
+# Unfollow a member by specifying his/hers email address
 function unfollow {
-	echo "Git ...."
+	if ! switch_to_network; then exit -1; fi
+        if [ -z "$1" ] ; then echo "You need to specify the email address of the member to unfollow. (e.g. ./sn unfollow member@mail.com)";exit -2; fi
+        if ! validate_email "$1"; then exit -3; fi
+        if ! already_following "$1"; then echo "You are not following $1";exit -4;fi
+	unfollowing=$(jq '.follow -= ["'"$1"'"]' "$my_set_file" )
+        echo "${unfollowing}" > "$my_set_file"
+        pretty_print "You have stopped following $1"
+}
+
+# Display liked posts
+function likes {
+	 if ! switch_to_network; then exit -1; fi
+	likes=$(jq -r '.likes[]' "$my_set_file")
+	pretty_print "You liked the following posts:"
+	for i in $likes; do git show -s --format="Post hash: %h%nOn: %cD %nUser: %an %nPosted: %s%n" "$i"; done
 }
 
 function setup {
 	echo "First time run. Please fill the followin settings."
 	read -p "Enter your name: " name
 	read -p "Enter your email: " email
-    	if ! [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]
-    	then
-        	echo "Email address $email is invalid. Exiting" >&2
-        	exit -1
-    	fi
+    	if ! validate_email "$email"; then exit -1; fi
 	# Set the push to simple 
 	if ! git config --global push.default simple; then exit -1; fi
 	if ! git config --global user.name "$name" ; then exit -1; fi
@@ -148,7 +250,7 @@ case $1 in
 	post 
 	;;
 	like)
-	like
+	like "$2"
 	;;
 	push)
 	push
@@ -157,13 +259,19 @@ case $1 in
 	members
 	;;
 	follow)
-	follow
+	follow "$2"
 	;;
 	unfollow)
-	unfollow
+	unfollow "$2"
+	;;
+	likes)
+	likes
 	;;
 	*)
-	echo "sn manual"
+	echo "USAGE:
+		./sn create URI or directory
+			Examples: ./sn create ~/repos/cooking
+				 ./sn create user@server.gr:/repos/cooking"
 	;;
 esac
 
