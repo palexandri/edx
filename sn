@@ -1,11 +1,21 @@
 #!/bin/bash
 
+#TODO: Redirecto all commands stdout/stderr to /dev/null
+
+# Pretty print information to the user
+function pretty_print {
+        echo "==============================================="
+        echo "$1"
+        echo "-----------------------------------------------"
+}
+
 #Verify that the requested network has been created or joined and switch to it
 function switch_to_network {
-	if ! [ -f .active_network ] ; then echo "No social network has been joined. Use 'sn join <social network>'"; return -1; fi
+	if ! [ -f .active_network ] ; then echo "No social network has been joined. Use 'sn join <social network>'"; return 1; fi
 	active_network=$(cat .active_network)
-	if ! [ -d "$active_network" ] ; then echo "The specified social network does not exist. Use 'sn create $1' or 'sn join $1' first."; return -2; fi
-	cd "$active_network"
+	if ! [ -d "$active_network" ] ; then echo "The specified social network does not exist. Use 'sn create $active_network' or 'sn join $active_network' first."; return 2; fi
+	if ! cd "$active_network" ; then return 3; fi
+	pretty_print "You are now on network $active_network"
 	return 0
 }
 
@@ -18,12 +28,24 @@ function create {
 # Join a local or remote netowrk
 function join {
 	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join https://www.github/something/cooking.git/ )."; exit -1; fi
-	# Strip URL and other decorations
-	#active_network=$(basename "$1")
-	# strip trailing .git if any
+	# strip url and trailing .git if any
 	active_network=$(basename -s .git "$1")
-	if ! [ -d "$active_network" ] ; then git clone -q "$1"; fi
+	if ! [ -d "$active_network" ] ; then echo "Cloning network..."; git clone -q "$1"; fi
 	echo "$active_network" > .active_network
+	# If our config file is missing from the repo, then add it, commit and push.
+	# Our config file is a json file with our email
+	switch_to_network
+	my_set_file="$my_email.json"
+	if ! [ -f "$my_set_file" ]; then
+		echo "{ followers:[] }" > "$my_set_file";
+	fi
+	# Add - commit - push our settings file
+	pretty_print "Adding any changes to your local settings file back to the network..."
+	git add "$my_set_file"
+	pretty_print "Committing the changes to the nerwork..."
+	git commit -q -m "$my_name joined the network"
+	pretty_print "Pushing your changes to others in the network..."
+	git push -q origin master
 }
 
 function pull {
