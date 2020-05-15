@@ -1,48 +1,57 @@
 #!/bin/bash
 
-function create {
-	if [ -z "$1" ] ; then echo "You need to specify a valid social network to create (e.g. sn create cooking)."; exit -1 ; fi
-        git init --bare "$1"
-	#git branch "$1"
+#Verify that the requested network has been created or joined and switch to it
+function switch_to_network {
+	if ! [ -f .active_network ] ; then echo "No social network has been joined. Use 'sn join <social network>'"; return -1; fi
+        if ! [ -d "$1" ] ; then echo "The specified social network does not exist. Use 'sn create $1' or 'sn join $1' first."; return -2; fi
+	cd "$1"
+	return 0
 }
 
+# Create an empty network to a folder ending with .netork
+function create {
+	if [ -z "$1" ] ; then echo "You need to specify a valid social network to create (e.g. sn create cooking)."; exit -1 ; fi
+        git init --bare "$1.git"
+}
+
+# Join a local or remote netowrk
 function join {
-	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join cooking)."; exit -1; fi
-	if ! [ -d "$1" ] ; then echo "The specified social network does not exist. Use 'sn create $1' first."; exit -1; fi
-	if ! [ -d "$1-repo" ] ; then
-		git clone -q "$1" "$1-repo";
-	fi
-	echo "$1-repo" > .active-network 
-	#if ! git checkout "$1"; then echo "Network does not exist. Use 'sn create $1' first."; fi 
+	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join https://www.github/something/cooking.git/ )."; exit -1; fi
+	# Strip URL and other decorations
+	network_name=$(basename "$1")
+	# strip trailing .git if any
+	network_name=$(basename "$network_name")
+	if ! [ -d "$1" ] ; then git clone -q "$1"; fi
+	echo "$network_name" > .active_network
 }
 
 function pull {
-	 cd $(cat .active-network)
+	if ! switch_to_network $1; then exit -1; fi
 	git pull	
 }
 
 function log {
-	cd $(cat .active-network)
+	if ! switch_to_network $1; then exit -1; fi
 	git log --oneline
 }
 
 function show {
-	 cd $(cat .active-network)
+	if ! switch_to_network $1; then exit -1; fi
 	echo "Git show"
 }
 
 function post {
-	 cd $(cat .active-network)
+	if ! switch_to_network $1 $2; then exit -1; fi
 	echo "Git commit"
 }
 
 function like {
-	 cd $(cat .active-network)
+	if ! switch_to_network; then exit -1; fi
 	echo "Git tag"
 }
 
 function push {
-	 cd $(cat .active-network)
+	if ! switch_to_network; then exit -1; fi
 	git push 
 }
 
@@ -59,8 +68,8 @@ function unfollow {
 }
 
 function setup {
+	echo "First time run. Please fill the followin settings."
 	read -p "Enter your name: " name
-	echo
 	
 	read -p "Enter your email: " email
     	echo
@@ -83,16 +92,15 @@ function setup {
 	if ! git config --global push.default simple; then exit -1; fi
 	if ! git config --global user.name "$name" ; then exit -1; fi
     	if ! git config --global user.email "$email" ; then exit -1; fi
-	echo "$name" > .setup
-	echo "$email" >> .setup
-	
 }
 
 # Make sure the git command is installed in the system.
 if ! [ -x "$(command -v git)" ]; then echo 'Please install the git command first.'; exit -1 ; fi
 # Verify that a remote repository has been set. If not, setup and continue.
-#if ! git remote get-url origin &> /dev/null; then setup;  fi
-if ! [ -f .setup ] ; then setup ; fi
+if [ -z "$(git config --global -l)" ]  ; then setup ; fi
+#Now store my name and email in variables
+my_name=$(git config --global --get user.name)
+my_email=$(git config --global --get user.email)
 
 case $1 in
 	create)
@@ -105,7 +113,7 @@ case $1 in
 	pull
 	;;
 	log)
-	log
+	log "$2"
 	;;
 	show)
 	show
