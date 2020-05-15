@@ -68,7 +68,7 @@ function create {
 }
 
 # Join a local or remote netowrk
-function join {
+function _join {
 	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join https://www.github/something/cooking.git/ )."; exit -1; fi
 	# strip url and trailing .git if any
 	active_network=${1%.*}
@@ -235,7 +235,7 @@ case $1 in
 	create "$2"
 	;;
 	join)
-	join "$2"	
+	_join "$2"	
 	;;
 	pull)
 	pull
