@@ -35,9 +35,8 @@ function join {
 	# If our config file is missing from the repo, then add it, commit and push.
 	# Our config file is a json file with our email
 	switch_to_network
-	my_set_file="$my_email.json"
 	if ! [ -f "$my_set_file" ]; then
-		echo "{ followers:[] }" > "$my_set_file";
+		echo '{ "posts":0, "followers":[] }' > "$my_set_file";
 	fi
 	# Add - commit - push our settings file
 	pretty_print "Adding any changes to your local settings file back to the network..."
@@ -65,7 +64,16 @@ function show {
 
 function post {
 	if ! switch_to_network ; then exit -1; fi
-	echo "Git commit"
+	read -p "Type your post here. When finished, just press the 'Enter' key:  " post_body
+	# increase commit number
+	current_posts=$(jq '.posts' "$my_set_file" )
+	current_posts=$((current_posts+1))
+	#current_posts=".posts = $current_posts"
+	contents="$(jq '.posts = '"$current_posts" "$my_set_file")" && echo "${contents}" > "$my_set_file"
+	#pretty_print "Adding your post..."		
+	git add "$my_set_file"
+	#pretty_print "Commiting your post. Do not forget to push your post to the rest of the network with './sn push'"
+	git commit -q -m "$post_body"	
 }
 
 function like {
@@ -75,7 +83,7 @@ function like {
 
 function push {
 	if ! switch_to_network; then exit -1; fi
-	git push 
+	git push -q origin master
 }
 
 function members {
@@ -112,6 +120,7 @@ if [ -z "$(git config --global -l)" ]  ; then setup ; fi
 # Now store my name and email in variables
 my_name=$(git config --global --get user.name)
 my_email=$(git config --global --get user.email)
+my_set_file="$my_email.json"
 
 case $1 in
 	create)
@@ -124,13 +133,13 @@ case $1 in
 	pull
 	;;
 	log)
-	log "$2"
+	log 
 	;;
 	show)
 	show
 	;;
 	post)
-	post
+	post 
 	;;
 	like)
 	like
