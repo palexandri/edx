@@ -3,8 +3,9 @@
 #Verify that the requested network has been created or joined and switch to it
 function switch_to_network {
 	if ! [ -f .active_network ] ; then echo "No social network has been joined. Use 'sn join <social network>'"; return -1; fi
-        if ! [ -d "$1" ] ; then echo "The specified social network does not exist. Use 'sn create $1' or 'sn join $1' first."; return -2; fi
-	cd "$1"
+	active_network=$(cat .active_network)
+	if ! [ -d "$active_network" ] ; then echo "The specified social network does not exist. Use 'sn create $1' or 'sn join $1' first."; return -2; fi
+	cd "$active_network"
 	return 0
 }
 
@@ -18,30 +19,30 @@ function create {
 function join {
 	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join https://www.github/something/cooking.git/ )."; exit -1; fi
 	# Strip URL and other decorations
-	network_name=$(basename "$1")
+	#active_network=$(basename "$1")
 	# strip trailing .git if any
-	network_name=$(basename "$network_name")
-	if ! [ -d "$1" ] ; then git clone -q "$1"; fi
-	echo "$network_name" > .active_network
+	active_network=$(basename -s .git "$1")
+	if ! [ -d "$active_network" ] ; then git clone -q "$1"; fi
+	echo "$active_network" > .active_network
 }
 
 function pull {
-	if ! switch_to_network $1; then exit -1; fi
+	if ! switch_to_network ; then exit -1; fi
 	git pull	
 }
 
 function log {
-	if ! switch_to_network $1; then exit -1; fi
+	if ! switch_to_network ; then exit -1; fi
 	git log --oneline
 }
 
 function show {
-	if ! switch_to_network $1; then exit -1; fi
+	if ! switch_to_network ; then exit -1; fi
 	echo "Git show"
 }
 
 function post {
-	if ! switch_to_network $1 $2; then exit -1; fi
+	if ! switch_to_network ; then exit -1; fi
 	echo "Git commit"
 }
 
@@ -70,25 +71,13 @@ function unfollow {
 function setup {
 	echo "First time run. Please fill the followin settings."
 	read -p "Enter your name: " name
-	
 	read -p "Enter your email: " email
-    	echo
     	if ! [[ "$email" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]
     	then
         	echo "Email address $email is invalid. Exiting" >&2
         	exit -1
     	fi
-	#read -p "Please enter the git remote URI: " remote
-
-	# init our local repository
-	#if ! git init ; then exit -1; fi
-	# add remote
-	#if ! git remote add origin "$remote" ; then exit -1; fi
-	# pull all changes
-	#if ! git pull origin master; then git remote remove origin ;exit -1; fi
-
 	# Set the push to simple 
-	
 	if ! git config --global push.default simple; then exit -1; fi
 	if ! git config --global user.name "$name" ; then exit -1; fi
     	if ! git config --global user.email "$email" ; then exit -1; fi
@@ -96,9 +85,9 @@ function setup {
 
 # Make sure the git command is installed in the system.
 if ! [ -x "$(command -v git)" ]; then echo 'Please install the git command first.'; exit -1 ; fi
-# Verify that a remote repository has been set. If not, setup and continue.
+# Verify that git is setup properly 
 if [ -z "$(git config --global -l)" ]  ; then setup ; fi
-#Now store my name and email in variables
+# Now store my name and email in variables
 my_name=$(git config --global --get user.name)
 my_email=$(git config --global --get user.email)
 
