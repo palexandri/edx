@@ -59,7 +59,8 @@ function log {
 
 function show {
 	if ! switch_to_network ; then exit -1; fi
-	echo "Git show"
+	if [ -z "$1" ]; then exit -1; fi
+	git show -s --format="On: %cD %nUser: %an %nPosted: %s" "$1"
 }
 
 function post {
@@ -136,7 +137,7 @@ case $1 in
 	log 
 	;;
 	show)
-	show
+	show "$2"
 	;;
 	post)
 	post 
