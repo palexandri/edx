@@ -268,10 +268,41 @@ case $1 in
 	likes
 	;;
 	*)
-	echo "USAGE:
-		./sn create URI or directory
-			Examples: ./sn create ~/repos/cooking
-				 ./sn create user@server.gr:/repos/cooking"
+	echo "Social Network Application for edx Assessment no5
+USAGE:
+./sn create <URI or Path>
+	Create a new Social Network by specifing its URI or path
+	Examples: ./sn create ~/repos/cooking
+			  ./sn create user@server.gr:/repos/cooking
+./sn join <Network Name>
+	Join the specified Social Network
+	Examples: ./sn join cooking
+./sn pull
+	Get the latest posts for the joined Social Network.
+./sn log
+	Get the list of all posts for the joined Social Network.
+./sn show <post_uid>
+	Get details for a specific post in the joined Social Network.
+	Example: ./sn show 34e56fe
+./sn post
+	Create a new post in the joined Social Network
+./sn like <post_uid>
+	Set the 'Like' flag for the specified post in the joined Social Netowrk.
+	Example: ./sn like 34e56fe
+./sn push
+	Push your local posts to the joined Social Network
+./sn members
+	Get a list of members for the joined Social Network.
+./sn follow <member's email>
+	Follow the posts of the specified user in the joined Social Network. New posts are 
+	sent as emails to the followes.	
+	Example: ./sn follow user@email.com
+./sn unfollow <member's email>
+	Unfollow the posts of the specified user in the joined Social Network.
+	Example: ./sn unfolow user@email.com
+./likes
+	Get a list of the the posts the the current user 'Liked' in the joined Social Network.
+	"
 	;;
 esac
 
