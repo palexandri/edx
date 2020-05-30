@@ -6,7 +6,7 @@ post and push their comments to the repositories and like or follow fellow membe
 ## Getting Started
 
 These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-This script is intended for educational purposes and not to be deployed in a production system.
+This script is intended to be used for educational purposes is and not tested for production.
 
 ### Prerequisites
 
@@ -27,7 +27,22 @@ Execute sn to get a list of available commands.
 #./sn
 
 The script will create a personalised json file for every network you join holding the total number
-of posts, the people that you follow and the likes that you have made.
+of posts, the people that you follow and the likes that you have made. It will also allow you to 
+setup git on first run.
+
+## Examples
+
+To create a new network named cooking, join it and post somthing you need to execute the following commands:
+
+#./sn create cooking
+#./sn join cooking
+#./sn post
+
+To follow a member's posts you need to execute sn follow and supply the member'e email:
+
+#./sn follow palexandri@gmail.com
+
+Each time the member pushes his/hers posts to the network, you will receive an email to your git supplied email address. 
 
 ## Authors
 

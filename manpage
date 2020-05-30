@@ -8,7 +8,8 @@ sn [COMMAND]
 .SH DESCRIPTION
 sn is a bash script that uses git to create social network repositories that others can join and post comments.
 In addition, sn allows synching local comments to remote networks, following other members and liking other
-member's ports
+member's ports. A json file is created when joining a network for the first time. This file stores the total
+posts the member has commited, the members that he/she follows and the posts that he/she likes.
 .SH COMMAND
 create <URI or Path>
           Create a new Social Network by specifing its URI or path
