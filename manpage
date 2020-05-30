@@ -1,14 +1,60 @@
 .\" Manpage for sn.
 .\" Contact palexandri@gmail.com to correct errors or typos.
-.TH man 8 "21 May 2020" "1.0" "sn man page"
+.TH man 8 "21 May 2020" "1.0" "sn bash script man page"
 .SH NAME
-sn \- Social Network Application 
+sn \- Git based Social Networking Script 
 .SH SYNOPSIS
-sn [USERNAME]
+sn [COMMAND]
 .SH DESCRIPTION
-sn is high level shell program for adding users to LDAP server.  On Debian, administrators should usually use nuseradd.debian(8) instead.
-.SH OPTIONS
-The nuseradd does not take any options. However, you can supply username.
+sn is a bash script that uses git to create social network repositories that others can join and post comments.
+In addition, sn allows synching local comments to remote networks, following other members and liking other
+member's ports
+.SH COMMAND
+create <URI or Path>
+          Create a new Social Network by specifing its URI or path
+          Examples: sn create ~/repos/cooking
+                    sn create user@server.gr:/repos/cooking
+         
+join <Network Name>
+          Join the specified Social Network
+          Examples: sn join cooking
+         
+pull
+          Get the latest posts for the joined Social Network.
+         
+log
+          Get the list of all posts for the joined Social Network.
+         
+show <post_short_hash>
+          Get details for a specific post in the joined Social Network.
+          Example: sn show 34e56fe
+         
+post
+          Create a new post in the joined Social Network
+         
+like <post_short_hash>
+          Set the 'Like' flag for the specified post in the joined Social Network.
+          Example: sn like 34e56fe
+         
+push
+          Push your local posts to the joined Social Network
+         
+members
+          Get a list of members for the joined Social Network.
+         
+follow <member's email>
+          Follow the posts of the specified user in the joined Social Network. New posts are 
+          sent as emails to the followes.
+          Example: sn follow user@email.com
+         
+unfollow <member's email>
+          Unfollow the posts of the specified user in the joined Social Network.
+          Example: sn unfolow user@email.com
+ 
+likes
+          Get a list of the the posts the the current user 'Liked' in the joined Social Network.
+          
+
 .SH SEE ALSO
 git(8) 
 .SH BUGS

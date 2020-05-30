@@ -1,6 +1,6 @@
 #!/bin/bash
 
-#TODO: Redirecto all commands stdout/stderr to /dev/null
+#TODO: Redirect all command outputs to /dev/null
 
 # Pretty print information to the user
 function pretty_print {
@@ -9,7 +9,7 @@ function pretty_print {
         echo "-----------------------------------------------"
 }
 
-#Email address validator
+#Email address validator. Returns 0 if mail is OK, otherwise 1.
 function validate_email {
 	if ! [[ "$1" =~ ^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$ ]]
         then
@@ -19,7 +19,8 @@ function validate_email {
 	return 0;
 }
 
-# Check if a member email exists
+# Check if a member's email exists in the git log. Returns 0 if passed email is in the git
+# log. Otherwise 1 
 function member_exists {
 	for i in $(git log --pretty=format:"%ae" | uniq); do
 		if [[ "$i" = "$1" ]]; then return 0; fi
@@ -27,7 +28,8 @@ function member_exists {
 	return 1;
 }
 
-# Check if we are already following a member
+# Check if we are already following a member by searching our settings file. Returns 0 if 
+# the member is in our settings file. Otherwise 1.
 function already_following {
 	for i in $(jq -r '.follow[]' "$my_set_file"); do
 		if [[ "$i" = "$1" ]]; then return 0; fi
@@ -35,7 +37,7 @@ function already_following {
 	return 1
 }
 
-#check if post exists
+#check if post's HASH exists in the git log. Returns 0 if the HASH exists. Otherwier 1
 function post_exists {
 	for i in $(git log --oneline | cut -d ' ' -f 1); do
 		if [[ "$i" = "$1" ]]; then return 0; fi
@@ -43,7 +45,8 @@ function post_exists {
 	return 1
 }
 
-#Check if we are already liking this post
+#Check if we are already liking this post's HASH by reading our settings file. Returns
+# 0 if we already like the post. Otherwise 1.
 function check_post_like {
 	for i in $(jq -r '.likes[]' "$my_set_file"); do
                 if [[ "$i" = "$1" ]]; then return 0; fi
@@ -61,13 +64,13 @@ function switch_to_network {
 	return 0
 }
 
-# Create an empty network to a folder ending with .netork
+# Create an empty network to a folder ending with .git
 function create {
 	if [ -z "$1" ] ; then echo "You need to specify a valid social network to create (e.g. sn create cooking)."; exit -1 ; fi
         git init --bare "$1.git"
 }
 
-# Join a local or remote netowrk
+# Join a local or remote network
 function _join {
 	if [ -z "$1" ] ; then echo "You need to specify a valid social network to join (e.g. sn join https://www.github/something/cooking.git/ )."; exit -1; fi
 	# strip url and trailing .git if any
@@ -78,7 +81,7 @@ function _join {
 	# Our config file is a json file with our email
 	switch_to_network
 	if ! [ -f "$my_set_file" ]; then
-		echo '{ "posts":0, "followers":[], "likes":[] }' > "$my_set_file";
+		echo '{ "posts":0, "follow":[], "likes":[] }' > "$my_set_file";
 	fi
 	# Add - commit - push our settings file
 	pretty_print "Adding any changes to your local settings file back to the network..."
@@ -210,6 +213,7 @@ function likes {
 	for i in $likes; do git show -s --format="Post hash: %h%nOn: %cD %nUser: %an %nPosted: %s%n" "$i"; done
 }
 
+# Initial git setup. This is usually executed once.
 function setup {
 	echo "First time run. Please fill the followin settings."
 	read -p "Enter your name: " name
@@ -268,41 +272,52 @@ case $1 in
 	likes
 	;;
 	*)
-	echo "Social Network Application for edx Assessment no5
-USAGE:
-./sn create <URI or Path>
-	Create a new Social Network by specifing its URI or path
-	Examples: ./sn create ~/repos/cooking
-			  ./sn create user@server.gr:/repos/cooking
-./sn join <Network Name>
-	Join the specified Social Network
-	Examples: ./sn join cooking
-./sn pull
-	Get the latest posts for the joined Social Network.
-./sn log
-	Get the list of all posts for the joined Social Network.
-./sn show <post_uid>
-	Get details for a specific post in the joined Social Network.
-	Example: ./sn show 34e56fe
-./sn post
-	Create a new post in the joined Social Network
-./sn like <post_uid>
-	Set the 'Like' flag for the specified post in the joined Social Netowrk.
-	Example: ./sn like 34e56fe
-./sn push
-	Push your local posts to the joined Social Network
-./sn members
-	Get a list of members for the joined Social Network.
-./sn follow <member's email>
-	Follow the posts of the specified user in the joined Social Network. New posts are 
-	sent as emails to the followes.	
-	Example: ./sn follow user@email.com
-./sn unfollow <member's email>
-	Unfollow the posts of the specified user in the joined Social Network.
-	Example: ./sn unfolow user@email.com
-./likes
-	Get a list of the the posts the the current user 'Liked' in the joined Social Network.
-	"
+	echo "Social Network Application for edx Assessment no5"
+	echo "USAGE:"
+	echo "./sn create <URI or Path>"
+	echo "	Create a new Social Network by specifing its URI or path"
+	echo "	Examples: ./sn create ~/repos/cooking"
+	echo "		  ./sn create user@server.gr:/repos/cooking"
+	echo " "
+	echo "./sn join <Network Name>"
+	echo "	Join the specified Social Network"
+	echo "	Examples: ./sn join cooking"
+	echo " "
+	echo "./sn pull"
+	echo "	Get the latest posts for the joined Social Network."
+	echo " "
+	echo "./sn log"
+	echo "	Get the list of all posts for the joined Social Network."
+	echo " "
+	echo "./sn show <post_short_hash>"
+	echo "	Get details for a specific post in the joined Social Network."
+	echo "	Example: ./sn show 34e56fe"
+	echo " "
+	echo "./sn post"
+	echo "	Create a new post in the joined Social Network"
+	echo " "
+	echo "./sn like <post_short_hash>"
+	echo "	Set the 'Like' flag for the specified post in the joined Social Network."
+	echo "	Example: ./sn like 34e56fe"
+	echo " "
+	echo "./sn push"
+	echo "	Push your local posts to the joined Social Network"
+	echo " "
+	echo "./sn members"
+	echo "	Get a list of members for the joined Social Network."
+	echo " "
+	echo "./sn follow <member's email>"
+	echo "	Follow the posts of the specified user in the joined Social Network. New posts are "
+	echo "	sent as emails to the followes."
+	echo "	Example: ./sn follow user@email.com"
+	echo " "
+	echo "./sn unfollow <member's email>"
+	echo "	Unfollow the posts of the specified user in the joined Social Network."
+	echo "	Example: ./sn unfolow user@email.com"
+	echo " "
+	echo "./sn likes"
+	echo "	Get a list of the the posts the the current user 'Liked' in the joined Social Network."
+	echo "	"
 	;;
 esac
 
